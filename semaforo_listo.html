@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>Reporte generado</h1>
+
+<div style="background:{{ color_hex }};color:white;padding:16px;border-radius:8px;font-weight:700;text-align:center;font-size:16px;margin-top:10px;">
+  {{ etiqueta }}
+</div>
+
+<p style="font-size:12px;color:#5B5346;margin-top:10px;">
+  Esta clasificación es una evaluación visual preliminar. La decisión de demolición corresponde exclusivamente a una evaluación estructural formal.
+</p>
+
+<a class="boton" href="{{ url_for('descargar', nombre_archivo=nombre_archivo) }}">Descargar PDF</a>
+<a class="boton secundario" href="{{ url_for('index') }}">Evaluar otra vivienda</a>
+{% endblock %}
