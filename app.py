@@ -59,7 +59,10 @@ def index():
     datos = {
         "vivienda": vivienda,
         "propietario": f.get("propietario", "").strip(),
+        "cedula": f.get("cedula", "").strip(),
         "telefono": f.get("telefono", "").strip(),
+        "adultos": f.get("adultos", "0"),
+        "menores": f.get("menores", "0"),
         "parroquia": f.get("parroquia", ""),
         "tipologia": f.get("tipologia", ""),
         "tecnologia_constructiva": f.get("tecnologia_constructiva", ""),

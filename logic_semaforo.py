@@ -23,6 +23,7 @@ OPC_INCLINACION = ["Ninguna", "Leve", "Moderada", "Severa"]
 OPC_ASENTAMIENTO = ["No se observa", "Grietas en piso o patio", "Hundimiento visible"]
 OPC_SI_NO = ["No", "Sí"]
 OPC_SERVICIOS = ["Operativos", "Parcialmente interrumpidos", "Totalmente interrumpidos"]
+OPC_CANTIDAD_PERSONAS = [str(i) for i in range(0, 16)]
 
 ESPACIOS_REGULARES = [
     ("sala", "Sala"), ("comedor", "Comedor"), ("cocina", "Cocina"),
@@ -76,43 +77,54 @@ def calcular_semaforo(espacios, techo_marcado, generales):
        generales: dict con 'inclinacion'
     """
     hay_colapso = False
-    severidad_estructural_por_espacio = {}
-    danos_no_estructurales_espacios = 0
+    elementos_estructurales_graves = 0  # cuenta columnas/vigas individuales con daño severo (no colapso)
+    espacios_con_dano_no_estructural_relevante = []  # grietas o desprendimiento (no fisuras leves solas)
+    hay_fisuras_leves = False
 
-    for clave, _ in ESPACIOS_REGULARES:
+    for clave, nombre in ESPACIOS_REGULARES:
         datos = espacios.get(clave, {"estructural": [], "no_estructural": []})
-        sev_estr = max([_RANGO_ESTRUCTURAL.get(v, 0) for v in datos["estructural"]], default=0)
-        severidad_estructural_por_espacio[clave] = sev_estr
-        if sev_estr == 3:
+
+        for v in datos["estructural"]:
+            if v.endswith("_colapso"):
+                hay_colapso = True
+            elif v.endswith("_severo"):
+                elementos_estructurales_graves += 1
+
+        no_estr = datos["no_estructural"]
+        if "colapso" in no_estr:
             hay_colapso = True
-        if "colapso" in datos["no_estructural"]:
-            hay_colapso = True
-        if datos["no_estructural"]:
-            danos_no_estructurales_espacios += 1
+        if "grietas" in no_estr or "desprendimiento" in no_estr:
+            espacios_con_dano_no_estructural_relevante.append(nombre)
+        elif "fisuras" in no_estr:
+            hay_fisuras_leves = True
 
     sev_techo = max([_RANGO_TECHO.get(v, 0) for v in techo_marcado], default=0)
     if sev_techo == 3:
         hay_colapso = True
+    elif sev_techo == 2:
+        espacios_con_dano_no_estructural_relevante.append("Techo/Cubierta")
+    elif sev_techo == 1:
+        hay_fisuras_leves = True
 
     inclinacion_severa = generales.get("inclinacion") == "Severa"
-
-    espacios_severo_estructural = sum(1 for v in severidad_estructural_por_espacio.values() if v == 2)
 
     if hay_colapso or inclinacion_severa:
         color_hex, etiqueta, motivo = "#C0392B", "ROJO — NO HABITABLE HASTA SER REPARADA", \
             "Se detectó colapso estructural en al menos un elemento, o inclinación severa de la vivienda."
-    elif espacios_severo_estructural >= 2:
+    elif elementos_estructurales_graves >= 3:
         color_hex, etiqueta, motivo = "#C0392B", "ROJO — NO HABITABLE HASTA SER REPARADA", \
-            "Daño estructural severo detectado en más de un espacio (generalizado)."
-    elif espacios_severo_estructural == 1:
-        espacio_afectado = next((nombre for clave, nombre in ESPACIOS_REGULARES if severidad_estructural_por_espacio.get(clave) == 2), None)
+            f"Se detectaron {elementos_estructurales_graves} elementos estructurales (columnas/vigas) con daño severo — daño generalizado."
+    elif elementos_estructurales_graves >= 1:
         color_hex, etiqueta, motivo = "#D68910", "AMARILLO — REPARABLE / ACCESO RESTRINGIDO", \
-            f"Daño estructural severo aislado en: {espacio_afectado}. Se recomienda evaluación técnica formal antes de usar esa zona."
-    elif danos_no_estructurales_espacios + (1 if sev_techo >= 1 else 0) >= 2:
+            f"Se detectaron {elementos_estructurales_graves} elemento(s) estructural(es) con daño severo (aislado). Se recomienda evaluación técnica formal antes de usar esa zona."
+    elif espacios_con_dano_no_estructural_relevante:
         color_hex, etiqueta, motivo = "#D68910", "AMARILLO — REPARABLE / ACCESO RESTRINGIDO", \
-            "Varios daños no estructurales acumulados (friso, revestimiento, techo)."
+            "Daño no estructural relevante (grietas o desprendimiento) en: " + ", ".join(espacios_con_dano_no_estructural_relevante) + "."
+    elif hay_fisuras_leves:
+        color_hex, etiqueta, motivo = "#27AE60", "VERDE — HABITABLE", \
+            "Se registran fisuras leves superficiales en paredes o friso; no comprometen la habitabilidad."
     else:
-        color_hex, etiqueta, motivo = "#27AE60", "VERDE — HABITABLE", "Sin daño relevante, o daño mínimo aislado."
+        color_hex, etiqueta, motivo = "#27AE60", "VERDE — HABITABLE", "Sin daño relevante."
 
     return color_hex, etiqueta, motivo
 
@@ -159,11 +171,13 @@ def generar_pdf(datos, carpeta):
     filas_gen = [
         f("VIVIENDA / DIRECCIÓN:", datos.get("vivienda", "")),
         f("PROPIETARIO:", datos.get("propietario") or "Sin Identificar"),
+        f("CÉDULA DEL BENEFICIARIO:", datos.get("cedula") or "No registrada"),
         f("TELÉFONO:", datos.get("telefono") or "No registrado"),
         f("PARROQUIA:", datos.get("parroquia", "") + ", Brión"),
         f("TIPOLOGÍA:", datos.get("tipologia", "")),
         f("TECNOLOGÍA CONSTRUCTIVA:", datos.get("tecnologia_constructiva", "")),
         f("OCUPACIÓN ACTUAL:", datos.get("ocupacion", "")),
+        f("PERSONAS QUE HABITAN LA VIVIENDA:", f"{int(datos.get('adultos') or 0) + int(datos.get('menores') or 0)} ({datos.get('adultos') or 0} adultos, {datos.get('menores') or 0} menores)"),
         f("FECHA:", datos.get("fecha", "")),
     ]
     lat = (datos.get("latitud") or "").strip()
