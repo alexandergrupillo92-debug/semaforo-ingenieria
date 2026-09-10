@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>Reporte Semáforo<br>Evaluación de Daños</h1>
+<p style="font-size:13px;color:#5B5346;">Dirección de Ingeniería Municipal — Alcaldía de Brión</p>
+<p style="font-size:13px;color:#5B5346;">Marca todas las opciones que apliquen en cada espacio.</p>
+
+<form method="POST" enctype="multipart/form-data">
+  <h2>Datos generales</h2>
+
+  <label>Vivienda / Dirección</label>
+  <input type="text" name="vivienda" required placeholder="Ej: Casa 14, Calle Los Mangos">
+
+  <label>Propietario</label>
+  <input type="text" name="propietario" placeholder="Sin Identificar">
+
+  <label>Cédula del beneficiario</label>
+  <input type="text" name="cedula" placeholder="Ej: V-12345678">
+
+  <label>Teléfono del propietario</label>
+  <input type="tel" name="telefono" placeholder="Ej: 0414-1234567">
+
+  <label>Cantidad de adultos que habitan la vivienda</label>
+  <select name="adultos">
+    {% for op in logic_semaforo.OPC_CANTIDAD_PERSONAS %}<option value="{{ op }}" {% if op == '2' %}selected{% endif %}>{{ op }}</option>{% endfor %}
+  </select>
+
+  <label>Cantidad de menores que habitan la vivienda</label>
+  <select name="menores">
+    {% for op in logic_semaforo.OPC_CANTIDAD_PERSONAS %}<option value="{{ op }}" {% if op == '0' %}selected{% endif %}>{{ op }}</option>{% endfor %}
+  </select>
+
+  <label>Parroquia</label>
+  <select name="parroquia">
+    <option value="Higuerote">Higuerote</option>
+    <option value="Curiepe">Curiepe</option>
+    <option value="Tacarigua">Tacarigua</option>
+  </select>
+
+  <label>Tipología</label>
+  <select name="tipologia">
+    {% for op in logic_semaforo.OPC_TIPOLOGIA %}<option value="{{ op }}">{{ op }}</option>{% endfor %}
+  </select>
+
+  <label>Tecnología constructiva</label>
+  <select name="tecnologia_constructiva">
+    {% for op in logic_semaforo.OPC_TECNOLOGIA %}<option value="{{ op }}">{{ op }}</option>{% endfor %}
+  </select>
+
+  <label>Ocupación actual</label>
+  <select name="ocupacion">
+    {% for op in logic_semaforo.OPC_OCUPACION %}<option value="{{ op }}">{{ op }}</option>{% endfor %}
+  </select>
+
+  <label>Fecha</label>
+  <input type="text" name="fecha" placeholder="dd/mm/aaaa">
+
+  <label>Inspector (opcional)</label>
+  <input type="text" name="inspector" placeholder="Dejar en blanco si no se desea registrar">
+
+  <h2>Ubicación satelital de la vivienda</h2>
+  <button type="button" class="secundario" onclick="capturarUbicacion()">📍 Usar mi ubicación actual (GPS)</button>
+  <p id="texto_gps" style="font-size:13px;color:#16294A;margin-top:8px;"></p>
+  <input type="hidden" name="latitud" id="latitud">
+  <input type="hidden" name="longitud" id="longitud">
+
+  <h2>Condiciones generales</h2>
+
+  <label>Inclinación o desplome visible</label>
+  <select name="inclinacion">
+    {% for op in logic_semaforo.OPC_INCLINACION %}<option value="{{ op }}">{{ op }}</option>{% endfor %}
+  </select>
+
+  <label>Asentamiento del terreno</label>
+  <select name="asentamiento">
+    {% for op in logic_semaforo.OPC_ASENTAMIENTO %}<option value="{{ op }}">{{ op }}</option>{% endfor %}
+  </select>
+
+  <label>Riesgo de caída de elementos (cables, tanques, muros)</label>
+  <select name="riesgo_caida">
+    {% for op in logic_semaforo.OPC_SI_NO %}<option value="{{ op }}">{{ op }}</option>{% endfor %}
+  </select>
+
+  <label>Estructura vecina en riesgo de colapsar sobre esta</label>
+  <select name="vecino_riesgo">
+    {% for op in logic_semaforo.OPC_SI_NO %}<option value="{{ op }}">{{ op }}</option>{% endfor %}
+  </select>
+
+  <label>Servicios básicos</label>
+  <select name="servicios">
+    {% for op in logic_semaforo.OPC_SERVICIOS %}<option value="{{ op }}">{{ op }}</option>{% endfor %}
+  </select>
+
+  {% for clave, nombre in logic_semaforo.ESPACIOS_REGULARES %}
+  <h2>{{ nombre }}</h2>
+
+  <label>Daño estructural (marca todas las que apliquen)</label>
+  {% for valor, texto in logic_semaforo.OPC_ESTRUCTURAL %}
+  <div style="margin:4px 0;">
+    <input type="checkbox" name="estructural_{{ clave }}" value="{{ valor }}" id="estr_{{ clave }}_{{ valor }}">
+    <label for="estr_{{ clave }}_{{ valor }}" style="display:inline;font-weight:normal;margin:0;">{{ texto }}</label>
+  </div>
+  {% endfor %}
+
+  <label>Daño no estructural (marca todas las que apliquen)</label>
+  {% for valor, texto in logic_semaforo.OPC_NO_ESTRUCTURAL %}
+  <div style="margin:4px 0;">
+    <input type="checkbox" name="no_estructural_{{ clave }}" value="{{ valor }}" id="noestr_{{ clave }}_{{ valor }}">
+    <label for="noestr_{{ clave }}_{{ valor }}" style="display:inline;font-weight:normal;margin:0;">{{ texto }}</label>
+  </div>
+  {% endfor %}
+
+  <label>Nota / ubicación (opcional)</label>
+  <input type="text" name="nota_{{ clave }}" placeholder="Ej: pared que da al patio">
+
+  <label>Fotografía (opcional)</label>
+  <input type="file" name="foto_{{ clave }}" accept="image/*">
+  {% endfor %}
+
+  <h2>Techo / Cubierta</h2>
+  {% for valor, texto in logic_semaforo.OPC_TECHO %}
+  <div style="margin:4px 0;">
+    <input type="checkbox" name="techo" value="{{ valor }}" id="techo_{{ valor }}">
+    <label for="techo_{{ valor }}" style="display:inline;font-weight:normal;margin:0;">{{ texto }}</label>
+  </div>
+  {% endfor %}
+
+  <label>Nota / ubicación (opcional)</label>
+  <input type="text" name="nota_techo" placeholder="Ej: sobre la cocina">
+
+  <label>Fotografía (opcional)</label>
+  <input type="file" name="foto_techo" accept="image/*">
+
+  <h2>Observaciones generales</h2>
+  <label>Observaciones (opcional)</label>
+  <textarea name="observaciones_generales" rows="4" placeholder="Cualquier nota adicional sobre la vivienda"></textarea>
+
+  <button type="submit">Generar reporte semáforo</button>
+</form>
+
+<script>
+function capturarUbicacion() {
+  var texto = document.getElementById("texto_gps");
+  if (!navigator.geolocation) {
+    texto.textContent = "Tu navegador no permite obtener la ubicación.";
+    return;
+  }
+  texto.textContent = "Obteniendo ubicación...";
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    var lat = pos.coords.latitude.toFixed(6);
+    var lon = pos.coords.longitude.toFixed(6);
+    document.getElementById("latitud").value = lat;
+    document.getElementById("longitud").value = lon;
+    texto.textContent = "Ubicación capturada: " + lat + ", " + lon;
+  }, function(error) {
+    texto.textContent = "No se pudo obtener la ubicación (revisa el permiso de ubicación del navegador).";
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+</script>
+{% endblock %}
